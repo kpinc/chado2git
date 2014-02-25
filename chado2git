@@ -1,0 +1,53 @@
+#!/bin/sh
+# This program is chado2git
+# Copyright (C) 2014 The Meme Factory, Inc.  http://www.meme.com/
+#
+#    chado2git is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+# Karl O. Pinc <kop@meme.com>
+
+git svn clone \
+  https://svn.code.sf.net/p/gmod/svn/schema \
+  --no-metadata \
+  --authors-file=authors-transform.txt \
+  --stdlayout \
+  --prefix='' \
+  --ignore-paths='modules/sequence/apollo-bridge/sample_db/.*\.bz2$' \
+  chado
+
+# Near as I can tell there are no svn:ignore properties.
+
+git init --bare chado.git
+cd chado.git
+git symbolic-ref HEAD refs/heads/trunk
+cd ..
+
+# push the temp repository to the new bare repository.
+cd chado
+git remote add bare ../chado.git
+git config remote.bare.push 'refs/remotes/*:refs/heads/*'
+git push bare
+cd ..
+
+# Rename “trunk” branch to “master”
+
+cd chado.git
+git branch -m trunk master
+
+# Clean up branches and tags
+
+git for-each-ref --format='%(refname)' refs/heads/tags |
+cut -d / -f 4 |
+while read ref
+do
+  git tag "$ref" "refs/heads/tags/$ref";
+  git branch -D "tags/$ref";
+done
